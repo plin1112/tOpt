@@ -86,6 +86,7 @@ class SameSizeCoordsBatch(object):
 
         self.coords = self.coords[fltr].detach_().requires_grad_(self.coords.requires_grad)
         self.atom_types = self.atom_types[fltr]
+        self.atom_indices = self.atom_indices[fltr]
         self.n_confs = self.coords.shape[0]
 
         uniq_at_types, at_type_count = torch.unique(self.atom_types.reshape(-1), return_counts=True, sorted=True)
@@ -100,6 +101,7 @@ class SameSizeCoordsBatch(object):
         cln = SameSizeCoordsBatch(self.allowed_atom_num, self.coords.dtype)
         cln.coords = self.coords[fltr]
         cln.atom_types = self.atom_types[fltr]
+        cln.atom_indices = self.atom_indices[fltr]
         cln.n_confs = cln.coords.shape[0]
 
         uniq_at_types, at_type_count = torch.unique(self.atom_types.reshape(-1), return_counts=True, sorted=True)
