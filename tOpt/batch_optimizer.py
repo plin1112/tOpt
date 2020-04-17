@@ -205,12 +205,15 @@ class BatchOptimizer(object):
 
         for mol,conf,e,std,g,stat, n_step in zip(mol_batch,coords.detach().cpu().numpy(), energies, stds, grads.detach().cpu().numpy(), status, n_steps):
             mol.coordinates = conf 
-            mol[OPT_ENERGY_TAG] = f'{e:.1f}'
+            mol[OPT_ENERGY_TAG] = f'{e:.4f}'
             mol[OPT_STATUS_TAG] = stat
             mol[OPT_STEPS] = n_step
-            if std: mol[OPT_STD_TAG] = f'{std:.1f}'
+            if std: mol[OPT_STD_TAG] = f'{std:.4f}'
             if self.out_grad: 
+                '''
                 frc = np.array_str(-1 * g,-1, 3, True)
                 frc = re.sub(MULTI_SPACE_RE, " ",frc)
                 frc = re.sub(SPACE_TO_CSV_RE,"\\1,\\2",frc)
-                mol[OPT_FORCE_TAG] = frc
+                '''
+                max_frc = math.sqrt(np.max(np.square(g)))
+                mol[OPT_FORCE_TAG] = f'{max_frc:.5f}'

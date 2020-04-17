@@ -65,7 +65,7 @@ def main(nnp_comput_factory:NNPComputerFactoryInterface = ExampleNNPComputerFact
     parser.add_argument('-constraint' ,  metavar='type' ,  type=str, default=None, choices=['heavyAtom'],
                         help='Supported: heavyAtom ')
     parser.add_argument('-trust',   type=float, default=1, help='Starting trust radius.')
-    parser.add_argument('-maxiter', type=int, default=300, help='Maximum number of optimization steps.')
+    parser.add_argument('-maxiter', type=int, default=400, help='Maximum number of optimization steps.')
     parser.add_argument('-lineSearch', type=str, default=None, choices=['Armijo', 'Wolfe'], help='Line search algorithm to be used.')
     parser.add_argument('-lbfgsHistSize', type=int, default=200, help='History size used to approximate second derivatives.')
     parser.add_argument('-prune_high_energy', nargs=2, default=None, 

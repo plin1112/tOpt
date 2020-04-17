@@ -12,9 +12,9 @@ OPT_STEPS        = "NNP_STEPS"
 
 
 class ConvergenceOpts(object):
-    def __init__(self, max_iter: int = 20, max_it_without_decrease: int = 5,
-                       convergence_e:    float = 1e-2,
-                       convergence_grms: float = 0.1,  convergence_gmax: float = 0.15,
+    def __init__(self, max_iter: int = 400, max_it_without_decrease: int = 40,
+                       convergence_e:    float = 1e-4,
+                       convergence_grms: float = 0.01,  convergence_gmax: float = 0.005,
                        convergence_drms: float = 0.0006, convergence_dmax: float = 0.005):
         """ Default values from geometric, converted to kcal and A """
         self.max_iter = max_iter

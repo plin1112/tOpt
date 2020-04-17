@@ -13,10 +13,9 @@ from tOpt.abstract_NNP_computer import EnergyAndGradHelperHarmConstraint, Energy
     AbstractNNPComputer, AbstractEnergyAndGradHelper
 from tOpt.coordinates_batch import SameSizeCoordsBatch, CoordinateModelInterface
 from cddlib.chem.mol import BaseMol
-from tOpt.unit_conversion import Units
+from tOpt.unit_conversion import *
 
 import torchani
-
 
 log = logging.getLogger(__name__)
 
@@ -147,7 +146,7 @@ class EnergyAndGradHelper(AbstractEnergyAndGradHelper):
         self.coords_batch.coords.grad.zero_()
         
         if self.fFactor != 1.: grad /= self.fFactor
-        
+ 
         return grad
     
     def filter_(self, fltr:torch.tensor):
@@ -171,23 +170,7 @@ class DummyNet(CoordinateModelInterface):
         e = e.reshape(c.shape[0],-1).sum(-1)
         # min (y=(5x)^2 + e^(5x)) ~ y(-0.703) = 0.8272
         return e, e   # fake stdev with e, will not affect tests   
-
-
-class ANI2xNet(CoordinateModelInterface):
-    """
-        A ANI2x pytoch module that computes a ANI2x potential
-    """
-
-    def __init__(self):
-        super().__init__()
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.model = torchani.models.ANI2x().to(self.device)
-
-    def forward(self, same_size_coords_batch: SameSizeCoordsBatch):
-        c = same_size_coords_batch.coords.to(self.device)
-        a = same_size_coords_batch.atom_indices.to(self.device)
-        e = self.model((a, c)).energies
-        return e, e  # fake stdev with e, will not affect tests
+    
 
 class ANI1xNet(CoordinateModelInterface):
     """
@@ -202,9 +185,30 @@ class ANI1xNet(CoordinateModelInterface):
     def forward(self, same_size_coords_batch: SameSizeCoordsBatch):
         c = same_size_coords_batch.coords.to(self.device)
         a = same_size_coords_batch.atom_indices.to(self.device)
-        _, e = self.model((a, c))
-        e = e * 627.509
-        return e, e  # fake stdev with e, will not affect tests
+        e = self.model((a, c)).energies
+        e = e * HARTREE_TO_KCALMOL
+        std = torch.zeros_like(e)
+        return e, std  # fake stdev with e, will not affect tests
 
 
+class ANI2xNet(CoordinateModelInterface):
+    """
+        A dummy pytoch module that computes a potential that pulls all atoms
+        towards having coordinate = -0.703
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.model = torchani.models.ANI2x().to(self.device)
+
+    def forward(self, same_size_coords_batch: SameSizeCoordsBatch):
+        c = same_size_coords_batch.coords.to(self.device)
+        a = same_size_coords_batch.atom_indices.to(self.device)
+        e = self.model((a, c)).energies
+        e = e * HARTREE_TO_KCALMOL
+        std = torch.zeros_like(e)
+        return e, std  # fake stdev with e, will not affect tests
+
+    
 

@@ -90,11 +90,11 @@ class ExampleNNPComputerFactory(NNPComputerFactoryInterface):
         from tOpt import ANI_computer
         return ANI_computer.ANIComputer(self.nnp_name, 
                                         outputGrad, compute_stdev, energyOutUnits=energyOutUnits)
-
+        
 
     def _ANI1xNNP(self, outputGrad: bool, compute_stdev: bool, energyOutUnits: Units = Units.KCAL, **kwArgs):
         """
-           just a call to use ANI2x pytorch potential
+           just a call to use ANI1x pytorch potential
         """
         from tOpt.pytorch_computer import ANI1xNet
 
@@ -104,7 +104,6 @@ class ExampleNNPComputerFactory(NNPComputerFactoryInterface):
         atoms = [1, 6, 7, 8]
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         atomization_e = torch.tensor([0] * (max(atoms) + 1), dtype=torch.float).to(device)
-
         return PytorchComputer(net, atoms, atomization_e, outputGrad, compute_stdev, torch.float, 10, 1, False)
 
 
@@ -117,10 +116,9 @@ class ExampleNNPComputerFactory(NNPComputerFactoryInterface):
         log.warning('Testing ANI2x model!!!!!')
 
         net = ANI2xNet()
-        atoms = [1, 6, 7, 8, 9, 16, 17]
+        atoms = [1, 6, 7, 8, 16, 9, 17]
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         atomization_e = torch.tensor([0] * (max(atoms) + 1), dtype=torch.float).to(device)
-
         return PytorchComputer(net, atoms, atomization_e, outputGrad, compute_stdev, torch.float, 10, 1, False)
 
 
@@ -144,3 +142,5 @@ class ExampleNNPComputerFactory(NNPComputerFactoryInterface):
         """
         
         raise NotImplemented("No other NNP was implemented")
+
+

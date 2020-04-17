@@ -34,6 +34,7 @@ class OptState(object):
         #self.status_actives = torch.ones(n_confs, dtype=torch.uint8, device=lbfgs.device)
 
         self.lr = torch.full((n_confs,), lbfgs.initial_lr, device=lbfgs.device)
+        
         self.loss = None
         self.std  = None
         self.flat_grad = None
@@ -41,10 +42,11 @@ class OptState(object):
         #self.abs_grad_sum = None
         self.d = None
         self.t = None
+        self.prev_loss = None
+        
         self.old_dirs = MultiInstanceHistory(lbfgs.history_size, n_confs, n_atoms*3, dtype, lbfgs.device)
         self.old_stps = MultiInstanceHistory(lbfgs.history_size, n_confs, n_atoms*3, dtype, lbfgs.device)
         self.H_diag = torch.full((n_confs,), 1, dtype=dtype, device=lbfgs.device)
-        self.prev_loss = None
         self.last_decreased = torch.zeros(n_confs, dtype=torch.int16, device=lbfgs.device)
             
         self.iters_with_no_linsearch   = torch.zeros(n_confs, dtype=torch.int16, device=lbfgs.device)
@@ -119,7 +121,7 @@ class BatchLBFGS():
         """ add gradient to coordinates to take a step """
         # view as to avoid deprecated point wise semantics
         step = trust.reshape(-1,1,1)*update.view_as(coords)
-                
+ 
         coords.data.add_(step)
         return trust #* cutoff_multiplier
     
@@ -361,7 +363,7 @@ class BatchLBFGS():
 
         # evaluate initial f(x) and df/dx
         loss, std = energy_helper.compute_energy()    # loss[nConf]
-        st = OptState(self, n_total_confs, n_atoms, loss.dtype)
+        st = OptState(self, n_total_confs, n_atoms, a_coords.dtype)
         st.loss = loss
         st.std = std
         min_loss = st.loss.detach().clone()
@@ -369,7 +371,7 @@ class BatchLBFGS():
         minE_no_constraints = energy_helper.energy_no_constraint().detach().clone()
         min_std = torch.full_like(minE_no_constraints, -1)
         st.flat_grad = energy_helper.compute_grad().reshape(st.n_confs,-1)
-        min_grad_square_max = torch.full((n_total_confs,), 9e20, dtype=min_loss.dtype, device=self.device)
+        min_grad_square_max = torch.full((n_total_confs,), 9e20, dtype=a_coords.dtype, device=self.device)
         #st.abs_grad_sum = st.flat_grad.abs().sum(1)
         
         status      = torch.zeros((n_total_confs,),dtype=torch.uint8, device=self.device)
@@ -377,7 +379,7 @@ class BatchLBFGS():
         conf_steps  = torch.full((n_total_confs,), -1, dtype=torch.int16, device=self.device)
         minE_coords = a_coords.detach().clone()
         minE_grad   = torch.full((n_total_confs,n_atoms*3), -999, dtype=minE_coords.dtype, device=self.device)
-        
+
         current_evals = 1
         func_evals += 1
         n_iter = 0
@@ -399,11 +401,11 @@ class BatchLBFGS():
                 # ys: sum(y * step) 
                 # do lbfgs update (update memory)
                 y = st.flat_grad.sub(st.prev_flat_grad)
-                
+
                 s = st.d*st.t.reshape(-1,1)
                 
                 ys = torch.sum(y * s, dim=1)
-                
+ 
                 is_valid_step = ys > 1e-10 # DIAL BACK TO 10E-6,4,5, look at RFO, rational function optimization
                                            # reach out to lee-ping or roland king (optking)
                                            # try occasionally setting h_diag to 1
@@ -412,10 +414,10 @@ class BatchLBFGS():
                                            #    maybe can get initial hessian guess in internal coordinates and project back to xyz and use as first guess
                 st.old_dirs.push_if(is_valid_step, y)
                 st.old_stps.push_if(is_valid_step, s)
-                y = y[is_valid_step]         
+                y = y[is_valid_step]
                 st.H_diag[is_valid_step] = ys[is_valid_step] / torch.sum(y * y, dim=1)
                 d_not_valid_steps = st.flat_grad[~is_valid_step].neg()   #d[~is_valid_step]
-                                
+
                 # compute the approximate (L-BFGS) inverse Hessian
                 # multiplied by the gradient
                 
@@ -425,7 +427,7 @@ class BatchLBFGS():
                 al = torch.zeros((self.history_size,st.n_confs), dtype=loss.dtype, device=self.device)
                 
                 num_old = st.old_dirs.count_hist.max()
-#                 log.debug("old_dirs {}\n{}".format(num_old, old_dirs.container[0:num_old]))
+#                 log.debug("old_dirs {}\n{}".format(num_old, st.old_dirs.container[0:num_old]))
                 
                 q = st.flat_grad.neg()
                 for i in range(num_old):
@@ -475,6 +477,8 @@ class BatchLBFGS():
                 #gtd = torch.sum(st.flat_grad * st.d, dim=1)  # g * d
 
                 # no line search, simply move with fixed-step
+#                 log.debug("st.t {}".format(st.t))
+#                 log.debug("st.d {}".format(st.d))
                 st.t = self._add_grad(a_coords, st.t, st.d)
                 
                 if n_iter != self.convergence_opts.max_iter:
